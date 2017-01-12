@@ -3,6 +3,12 @@ import sys
 from random import choice
 import twitter
 
+# Sets api to consumer/access keys
+api = twitter.Api(consumer_key=os.environ['TWITTER_CONSUMER_KEY'],
+                  consumer_secret=os.environ['TWITTER_CONSUMER_SECRET'],
+                  access_token_key=os.environ['TWITTER_ACCESS_TOKEN_KEY'],
+                  access_token_secret=os.environ['TWITTER_ACCESS_TOKEN_SECRET'])
+
 
 def open_and_read_file(filenames):
     """Given a list of files, open them, read the text, and return one long
@@ -43,27 +49,37 @@ def make_chains(text_string):
 def make_text(chains):
     """Takes dictionary of markov chains; returns random text."""
 
-    key = choice(chains.keys())
-    words = [key[0], key[1]]
-    while key in chains:
-        # Keep looping until we have a key that isn't in the chains
-        # (which would mean it was the end of our original text)
-        #
-        # Note that for long texts (like a full book), this might mean
-        # it would run for a very long time.
+    key = choice(chains.keys())  # randomly chooses a key from chains dict
+    text = key[0] + " " + key[1]  # sets text to values 1 and 2 in tuple key
 
-        word = choice(chains[key])
-        words.append(word)
-        key = (key[1], word)
+    while True:  # while text length is under 140
+        word = choice(chains[key])  # randomly choosing from full list of words at value of key in chains
+        temp_text = text + " " + word  # test variable so we can return to precvious var if length over 140
+        if len(temp_text) > 140:  # if length of tweet is under 140 chars
+            return text  # return previus state of tweet
+        text += " " + word  # otherwise, add the word to the end
+        key = (key[1], word)  # move key to next val
 
-    return " ".join(words)
+    return text
 
 
 def tweet(chains):
     # Use Python os.environ to get at environmental variables
     # Note: you must run `source secrets.sh` before running this file
     # to make sure these environmental variables are set.
-    pass
+
+    status = api.PostUpdate(make_text(chains))
+    print status.text
+
+    print ""
+    user_choice = raw_input("Enter to tweet again [q to quit] >>> ")
+    while user_choice != 'q':
+        status = api.PostUpdate(make_text(chains))
+        print status.text
+
+        print ""
+        user_choice = raw_input("Enter to tweet again [q to quit] >>> ")
+
 
 # Get the filenames from the user through a command line prompt, ex:
 # python markov.py green-eggs.txt shakespeare.txt
@@ -77,3 +93,4 @@ chains = make_chains(text)
 
 # Your task is to write a new function tweet, that will take chains as input
 # tweet(chains)
+tweet(chains)
